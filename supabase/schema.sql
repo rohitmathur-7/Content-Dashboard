@@ -18,8 +18,14 @@ create table if not exists activities (
   locations text,
   reference_link text,
   sort_order int,
+  status text not null default 'drafting',
   created_at timestamptz default now()
 );
+
+alter table activities add column if not exists status text not null default 'drafting';
+alter table activities drop constraint if exists activities_status_check;
+alter table activities add constraint activities_status_check
+  check (status in ('drafting', 'in_review', 'scheduled', 'published'));
 
 -- One prep_details row per activity TYPE, shared across every dated
 -- instance of that activity (e.g. all "Beach Party" dates point here).
@@ -52,7 +58,41 @@ create policy "Allow write activity_types" on activity_types for insert with che
 create policy "Allow read activities" on activities for select using (true);
 create policy "Allow write activities" on activities for insert with check (true);
 create policy "Allow update activities" on activities for update using (true);
+create policy "Allow delete activities" on activities for delete using (true);
 
 create policy "Allow read prep_details" on prep_details for select using (true);
 create policy "Allow write prep_details" on prep_details for insert with check (true);
 create policy "Allow update prep_details" on prep_details for update using (true);
+
+-- ---------- Library assets (uploaded images/videos/templates) ----------
+
+create table if not exists assets (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  file_type text not null check (file_type in ('image', 'video', 'template', 'other')),
+  storage_path text not null,
+  url text not null,
+  size_bytes bigint,
+  created_at timestamptz default now()
+);
+
+alter table assets enable row level security;
+
+create policy "Allow read assets" on assets for select using (true);
+create policy "Allow write assets" on assets for insert with check (true);
+create policy "Allow delete assets" on assets for delete using (true);
+
+-- Storage bucket for uploaded asset files. Public read so thumbnails/files can be
+-- displayed directly via their public URL.
+insert into storage.buckets (id, name, public)
+values ('assets', 'assets', true)
+on conflict (id) do nothing;
+
+create policy "Allow public read of assets bucket" on storage.objects
+  for select using (bucket_id = 'assets');
+
+create policy "Allow upload to assets bucket" on storage.objects
+  for insert with check (bucket_id = 'assets');
+
+create policy "Allow delete from assets bucket" on storage.objects
+  for delete using (bucket_id = 'assets');

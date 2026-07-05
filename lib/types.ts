@@ -3,6 +3,8 @@ export interface ActivityType {
   name: string;
 }
 
+export type ActivityStatus = "drafting" | "in_review" | "scheduled" | "published";
+
 export interface Activity {
   id: string;
   activity_type_id: string;
@@ -14,6 +16,7 @@ export interface Activity {
   locations: string | null;
   reference_link: string | null;
   sort_order: number | null;
+  status: ActivityStatus;
   activity_types: ActivityType | null; // joined
 }
 
@@ -32,4 +35,16 @@ export interface PrepDetails {
   edit_log: string | null;
   updated_at: string | null;
   updated_by: string | null;
+}
+
+export type AssetFileType = "image" | "video" | "template" | "other";
+
+export interface Asset {
+  id: string;
+  name: string;
+  file_type: AssetFileType;
+  storage_path: string;
+  url: string;
+  size_bytes: number | null;
+  created_at: string;
 }
